@@ -436,7 +436,7 @@ def do_deactivate_stream(stream, log=True):
     stream.name = new_name[:Stream.MAX_NAME_LENGTH]
     stream.save()
 
-    # Remove the old stream information from memcached.
+    # Remove the old stream information from remote cache.
     old_cache_key = get_stream_cache_key(old_name, stream.realm)
     cache_delete(old_cache_key)
 
@@ -609,7 +609,7 @@ def do_send_messages(messages):
     for message in messages:
         cache_save_message(message['message'])
         # Render Markdown etc. here and store (automatically) in
-        # memcached, so that the single-threaded Tornado server
+        # remote cache, so that the single-threaded Tornado server
         # doesn't have to.
         user_flags = user_message_flags.get(message['message'].id, {})
         sender = message['message'].sender
@@ -2244,7 +2244,7 @@ def do_update_message(user_profile, message_id, subject, propagate_mode, content
 
             for m in messages_list:
                 # The cached ORM object is not changed by messages.update()
-                # and the memcached update requires the new value
+                # and the remote cache update requires the new value
                 m.subject = subject
 
             changed_messages += messages_list
@@ -2266,16 +2266,16 @@ def do_update_message(user_profile, message_id, subject, propagate_mode, content
     # Update the message as stored in the (deprecated) message
     # cache (for shunting the message over to Tornado in the old
     # get_messages API) and also the to_dict caches.
-    items_for_memcached = {}
+    items_for_remote_cache = {}
     event['message_ids'] = []
     for changed_message in changed_messages:
         event['message_ids'].append(changed_message.id)
-        items_for_memcached[message_cache_key(changed_message.id)] = (changed_message,)
-        items_for_memcached[to_dict_cache_key(changed_message, True)] = \
+        items_for_remote_cache[message_cache_key(changed_message.id)] = (changed_message,)
+        items_for_remote_cache[to_dict_cache_key(changed_message, True)] = \
             (stringify_message_dict(changed_message.to_dict_uncached(apply_markdown=True)),)
-        items_for_memcached[to_dict_cache_key(changed_message, False)] = \
+        items_for_remote_cache[to_dict_cache_key(changed_message, False)] = \
             (stringify_message_dict(changed_message.to_dict_uncached(apply_markdown=False)),)
-    cache_set_many(items_for_memcached)
+    cache_set_many(items_for_remote_cache)
 
     def user_info(um):
         return {
