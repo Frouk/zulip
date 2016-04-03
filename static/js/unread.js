@@ -35,6 +35,16 @@ exports.update_unread_subjects = function (msg, event) {
     }
 };
 
+// Should probably be renamed,the natural name would be
+// unread.process_loaded_messages, but already exists
+exports.process_loaded_for_unread = function (messages) {
+    activity.process_loaded_messages(messages);
+    activity.update_huddles();
+    unread.process_loaded_messages(messages);
+    unread.update_unread_counts();
+    resize.resize_page_components();
+};
+
 exports.process_loaded_messages = function (messages) {
     _.each(messages, function (message) {
         var unread = exports.message_unread(message);
